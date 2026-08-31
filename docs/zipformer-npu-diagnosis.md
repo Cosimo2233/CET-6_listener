@@ -4,64 +4,77 @@
 
 ## 当前结论
 
-Zipformer 的 ONNX、A733 NBG 模型和板端 Demo 已经准备完成，但当前板卡的
-Debian 13 / Linux 6.6.98 NPU 内核路径不能正确执行官方要求的 int16 图。
-这不是 ASR 流水线、音频输入或解码器造成的。
+Zipformer 的 ONNX、A733 NBG 模型和板端 Demo 已经准备完成。板卡目前启动在
+Radxa 官方 `5.15.147-21-a733` 内核，NPU 设备及驱动可以初始化，但量化网络
+仍会在 `VIPDRV_WAIT_TASK` 处硬件超时。
 
-官方 Zipformer 示例使用 Debian 11 环境，并给出 A733 int16 模型约
-`RTF 0.053` 的结果。当前板端测试同一类模型时，Encoder 第一帧在
-`VIPDRV_WAIT_TASK` 处硬件超时。
+同样的超时已经在 AI-SDK 自带的、目标 CID 与 A733 相符的 v3 ShuffleNetV2
+量化 NBG 上复现，因此问题并非只由本项目的 Zipformer 模型转换造成。日志还
+显示 NPU 驱动请求 `1008 MHz / 960 mV` 时，供电仍为 `800 mV`，并报告
+`Get NPU Regulator Control FAIL!`。尝试通过 devfreq 将目标频率限制到
+`852 MHz` 后，`target_freq` 虽然改变，但实际时钟和 `cur_freq` 仍保持
+`1008 MHz`。当前重点应转为核对 A7A 的 DTB、PMIC 调压及 NPU 驱动组合。
+
+## 当前系统状态
+
+- 根文件系统：Debian 13 (Trixie)。
+- 默认启动内核：`5.15.147-21-a733`，原 `6.6.98-4-aw2511` 仍保留在 U-Boot
+  菜单中作为 `l0` 回退项。
+- NPU 设备：`/dev/vipcore`。
+- NPU 内核驱动：`2.0.3.0-AW-2024-05-29`。
+- NPU 用户态库：`2.0.3.4-AW-2025-05-16`。
+- Wi-Fi：AIC8800 DKMS 模块已针对 5.15 内核安装，NetworkManager 可自动连接。
+- HDMI：sunxi DRM/HDMI 驱动已加载，但本次检查时 HPD 为 `out`、DRM connector
+  为 `disconnected`，没有 EDID 和显示模式。
+- 图形桌面：5.15 内核下只有 `/dev/dri/card0`，没有 render node；SDDM 启动
+  Xorg 失败，Xorg 日志停在加载 `glamoregl` 后。除物理连接外，还需处理该内核
+  与当前 Debian 13 Mesa/Xorg 用户态的兼容问题。
 
 ## 已验证项目
 
-- NPU 设备存在：`/dev/vipcore`。
-- 当前系统：Debian 13，内核 `6.6.98-4-aw2511`。
-- 当前内核 NPU 驱动日志：`2.0.3.4-AW-2025-10-27`。
-- 已安装 Radxa Trixie 仓库的 `npu-runtime 2.0.3`；用户态库报告
-  `2.0.3.4-AW-2025-05-16`。
-- 官方预编译浮点 KWS Encoder 可以在 NPU 上运行。
-- 自行转换的微型浮点算子可以运行。
-- 自行转换的 uint8 算子、官方 int16 vocoder 和 int16 Zipformer 都会在
-  `VIPDRV_WAIT_TASK` 超时。
-- Zipformer int16 在 `1008 MHz`、`852 MHz`、`492 MHz` 均出现同样超时，
-  已排除 NPU 频率和供电裕量是主要原因。
-- 浮点 Zipformer 可以以约 `RTF 0.45` 执行，但三个子模型输出固定异常值，
-  最终重复输出 `THAT`；浮点路线不是官方支持的 Zipformer 部署路线。
-- 外部句柄缓冲区与运行库自管缓冲区均得到相同结果，已排除应用层缓存或
-  缓冲区映射是主要原因。
+- 官方预编译浮点 KWS Encoder 和自行转换的微型浮点算子曾可在 NPU 上运行。
+- 自行转换的 uint8 算子、官方 int16 vocoder、int16 Zipformer，以及 AI-SDK
+  自带的 v3 量化 ShuffleNetV2 都发生硬件等待超时。
+- AI-SDK v2 样例的目标 CID 为 `0x10000016`，与本机 A733 CID
+  `0x1000003b` 不匹配；v3 样例 CID 匹配且可完成网络创建和输入准备，但执行
+  时硬件超时。
+- 浮点 Zipformer 可以以约 `RTF 0.45` 执行，但子模型输出固定异常值，最终
+  重复输出 `THAT`；这不是可用的 ASR 路线。
+- 外部句柄缓冲区与运行库自管缓冲区结果相同，应用层缓存或映射不是首要嫌疑。
 
-## 关键日志
+## 关键文件与日志
 
+- `outputs/npu-official-ai-sdk-v3-kernel-5.15.log`
+- `outputs/npu-official-ai-sdk-v3-kernel-5.15-852mhz.log`
+- `outputs/npu-mul-add-uint8-kernel-5.15.log`
+- `outputs/npu-mul-add-uint8-kernel-5.15-runtime-2.0.3.2.log`
 - `outputs/zipformer-npu-int16-radxa-runtime.log`
-- `outputs/zipformer-npu-int16-852mhz.log`
-- `outputs/zipformer-npu-int16-492mhz.log`
 - `outputs/zipformer-npu-radxa-runtime.log`
-- `outputs/zipformer-npu-default-buffer.log`
-- `outputs/zipformer-npu-float-dump.log`
+- `tmp-workspace/ai-sdk/examples/vpm_run/operator/v3/network_binary.nb`
 
-## 已准备的官方兼容内核
+## 内核与恢复信息
 
-已从 Radxa 的 A733 Bullseye 仓库下载但**尚未安装**：
+已安装并验证：
 
-`tmp-workspace/radxa-kernel-5.15/linux-image-5.15.147-21-a733_5.15.147-21_arm64.deb`
+- `linux-image-5.15.147-21-a733`，SHA-256
+  `1d475a303f1a1a618028a4082be5c9dc0fd08f969c09741a5ed990c4abd3b75a`
+- `linux-headers-5.15.147-21-a733`，SHA-256
+  `88f161b57c6055c7a467bb2c08df423373f04a045a3632e47092c8926a5a9574`
 
-SHA-256：
+U-Boot 菜单保留 10 秒：`l1` 是 5.15，`l0` 是 6.6。配置备份位于：
 
-`1d475a303f1a1a618028a4082be5c9dc0fd08f969c09741a5ed990c4abd3b75a`
+- `/boot/extlinux/extlinux.conf.before-cet6-npu`
+- `/etc/default/u-boot.before-cet6-npu`
 
-该包包含 A7A DTB 和对应的 `vipcore.ko`，与官方 Zipformer 的 Debian 11
-验证路线一致。当前 6.6.98 内核必须保留为回退启动项。
+## 后续建议
 
-## 下一步
-
-1. 安装 5.15.147-21 内核，使其与现有 6.6.98 并存。
-2. 确认 `/boot/extlinux/extlinux.conf` 同时包含新旧两个启动项，并继续保留
-   6.6.98 回退项。
-3. 将 5.15.147-21 设为一次性/测试启动项后重启。
-4. 确认 SSH、音频、存储和 `/dev/vipcore` 正常。
-5. 先运行微型量化算子，再运行官方 int16 Zipformer 测试音频。
-6. NPU 验证通过后，再实现 `cet6_listener.asr` 的 Zipformer 后端并接入现有
-   文件音频流水线；Whisper 后端继续保留为回退。
-
-内核安装和重启存在失去远程连接的风险，执行前需要用户明确确认，并建议
-具备串口、显示器键盘或可操作 U-Boot 菜单中的任一恢复手段。
+1. 对照 Radxa A7A 官方可工作的 5.15 镜像，比较实际 DTB 中 `npu-supply`、
+   OPP 表和 PMIC regulator 配置；优先解决调压失败及实际时钟不降频的问题。
+2. 调压/时钟正常后先重跑 AI-SDK v3 ShuffleNetV2，再跑微型 uint8 算子，最后
+   才测试 int16 Zipformer。
+3. 若官方完整 Debian 11/5.15 镜像能运行量化样例，应将当前“Debian 13 根文件
+   系统 + 5.15 内核”的混合环境视为不受支持组合，而不是继续修改模型。
+4. NPU 量化验证通过后，再实现 `cet6_listener.asr` 的 Zipformer 后端；现有
+   Whisper 后端继续作为稳定回退。
+5. 显示器需求与 NPU 验证分开处理：6.6 内核适合当前桌面环境；5.15 可保留为
+   NPU 专用测试项。不要在没有完整备份和本地恢复手段时删除任一内核。
