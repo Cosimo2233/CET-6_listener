@@ -1,0 +1,68 @@
+audio:
+  ffmpeg_binary: ffmpeg
+  sample_rate: 16000
+  channels: 1
+  frame_ms: 20
+  realtime: true
+vad:
+  rms_threshold: 450
+  prefix_ms: 200
+  silence_ms: 600
+  max_speech_seconds: 20
+asr:
+  backend: whisper_cpp
+  binary: runtime/bin/whisper-server
+  model_path: model-bin/ggml-base.en.bin
+  base_url: http://127.0.0.1:8178
+  host: 127.0.0.1
+  port: 8178
+  threads: 4
+  language: en
+  timeout_seconds: 60
+  auto_start: true
+  npu_binary: runtime/zipformer-a733/zipformer_demo_a733
+  npu_model_dir: model-bin/zipformer-a733
+  npu_library_dir: runtime/zipformer-a733/lib
+  npu_device: /dev/vipcore
+  npu_encoder: encoder_int16_a733.nb
+  npu_decoder: decoder_int16_a733.nb
+  npu_joiner: joiner_int16_a733.nb
+  npu_tokens: tokens.txt
+  npu_frame_samples: 1600
+  npu_startup_timeout_seconds: 60
+llm:
+  binary: runtime/bin/llama-server
+  model_path: model-bin/qwen2.5-1.5b-instruct-q4_k_m.gguf
+  base_url: http://127.0.0.1:8080
+  host: 127.0.0.1
+  port: 8080
+  context_size: 4096
+  threads: 6
+  max_tokens: 36
+  temperature: 0.2
+  timeout_seconds: 30
+  auto_start: true
+tts:
+  target: 39.106.1.132:30032
+  voice_id: ""
+  language: Chinese
+  timeout_seconds: 30
+  decoder_chunk_size: 0
+  prefix: ""
+  player_binary: aplay
+pipeline:
+  context_word_limit: 700
+  question_silence_ms: 600
+  max_question_seconds: 20
+  audio_queue_size: 3000
+  question_queue_size: 4
+  answer_queue_size: 4
+translation:
+  source_language: English
+  target_language: Chinese
+  max_tokens: 128
+  max_characters: 240
+  queue_size: 8
+logging:
+  level: INFO
+  output_dir: outputs

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package qwen_tts.service.v1;
+
+message ListPresetVoicesRequest {}
+
+message PresetVoiceInfo {
+  string voice_id = 1;
+  string name = 2;
+  string language = 3;
+  bool supports_synthesize = 4;
+  bool supports_duplex = 5;
+  bool available_on_instance = 6;
+}
+
+message ListPresetVoicesResponse {
+  repeated PresetVoiceInfo voices = 1;
+  string serving_mode = 2;
+}
+
+service PresetVoiceService {
+  rpc ListPresetVoices(ListPresetVoicesRequest) returns (ListPresetVoicesResponse);
+}

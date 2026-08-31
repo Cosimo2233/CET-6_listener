@@ -1,0 +1,42 @@
+[project]
+name = "cet6-listener"
+version = "0.1.0"
+description = "瑞莎 A7A 本地六级英语听力辅助训练系统"
+authors = [{ name = "CET-6 Listener Contributors", email = "cet6-listener@example.com" }]
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "grpcio>=1.70,<2",
+    "httpx>=0.28,<1",
+    "protobuf>=5.29,<7",
+    "psutil>=6.1,<8",
+    "python-dotenv>=1.0,<2",
+    "pyyaml>=6.0,<7",
+    "typer>=0.15,<1",
+]
+
+[project.scripts]
+cet6-listener = "cet6_listener.commands.app:app"
+
+[dependency-groups]
+dev = [
+    "grpcio-tools>=1.70,<2",
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.25,<2",
+]
+
+[tool.poetry]
+packages = [{ include = "cet6_listener", from = "src" }]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[[tool.poetry.source]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+priority = "primary"
+
+[build-system]
+requires = ["poetry-core>=2.0,<3"]
+build-backend = "poetry.core.masonry.api"
