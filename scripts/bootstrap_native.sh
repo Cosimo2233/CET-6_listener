@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+source "$(dirname "${BASH_SOURCE[0]}")/lib/environment.sh"
+project_root="$CET6_PROJECT_ROOT"
 third_party_dir="$project_root/third-party"
 runtime_bin="$project_root/runtime/bin"
 llama_commit=d7bd3bfcad3e29c7e49fd26f38c79ee3e9a3fd6b

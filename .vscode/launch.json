@@ -2,24 +2,45 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "CET-6 Listener",
+      "name": "CET-6：听力作答",
       "type": "debugpy",
       "request": "launch",
       "module": "cet6_listener.commands.app",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": false,
       "envFile": "${workspaceFolder}/.env",
-      "args": ["run", "--audio", "data-bin/audio/test.mp3", "--dry-run"]
+      "args": ["run", "--audio", "${input:audioFile}", "--dry-run"]
+    },
+    {
+      "name": "CET-6：实时翻译",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cet6_listener.commands.app",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env",
+      "args": ["translate", "--audio", "${input:audioFile}", "--dry-run"]
     },
     {
       "name": "Pytest",
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": false,
       "envFile": "${workspaceFolder}/.env",
       "args": ["-q"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "audioFile",
+      "type": "promptString",
+      "description": "输入音频路径（相对仓库根目录或绝对路径）",
+      "default": "data-bin/audio/CET6_2025年6月_第1套_听力.mp3"
     }
   ]
 }

@@ -16,7 +16,30 @@ ALSA ← gRPC 流式 TTS ← 中文答案 ← llama.cpp/Qwen
                              ALSA ← gRPC 流式 TTS
 ```
 
-音频/ASR、问题/LLM 和 TTS 分别运行在异步任务中。上下文和任务队列均有固定上限，LLM 或 TTS 不会阻塞文件音频读取。
+音频/ASR、问题/LLM 和 TTS 分别运行在异步任务中，通过队列传递结果。翻译模式按顺序处理，队列满时会等待；作答模式的问题和答案队列满时会丢弃最旧项目。按原始节奏输入文件不保证推理能跟上实时速度，实际时延取决于硬件和模型。
+
+## 项目结构
+
+```text
+CET-6_listener/
+├── src/cet6_listener/     CLI、音频、ASR、LLM、TTS 与异步流水线
+├── tests/                unit/ 单元测试、integration/ 流水线测试
+├── config/default.yaml   默认运行参数
+├── scripts/              构建、下载、启动、批测与翻译测试脚本
+│   └── lib/              脚本共用的本地环境加载
+├── docs/                 当前结构说明、题型归纳和验证记录
+│   └── archive/          带日期的历史环境与 NPU 诊断快照
+├── data-bin/
+│   ├── audio/            本地听力音频
+│   └── answers/          答案解析，仅用于人工核对或评估
+├── model-bin/            Whisper、Qwen 及可选 NPU 模型
+├── runtime/bin/          本地编译的推理服务
+├── third-party/          固定版本的上游源码与构建目录
+├── outputs/              日志、截取音频与批测结果
+└── .tools/               可选的本地工具及动态库
+```
+
+模块职责与资源恢复方法见 [项目结构说明](docs/project-structure.md)。最近的真实翻译验证见 [翻译测试记录](docs/translation-smoke-test.md)。
 
 ## 环境要求
 
@@ -36,7 +59,8 @@ sudo apt install -y build-essential cmake git curl ffmpeg alsa-utils
 初始化 Python 环境：
 
 ```bash
-poetry env use /usr/local/bin/python3.11
+poetry config virtualenvs.in-project true --local
+poetry env use python3.11
 poetry install
 ./scripts/generate_protos.sh
 ```
@@ -57,7 +81,7 @@ model-bin/ggml-base.en.bin
 model-bin/qwen2.5-1.5b-instruct-q4_k_m.gguf
 ```
 
-`model-bin/`、`data-bin/`、`runtime/` 和 `outputs/` 不提交 Git。
+这些资源目录只提交 `.gitkeep` 占位文件。模型、音频、答案解析、原生二进制、第三方源码、`.tools/` 和测试输出均由 Git 忽略。克隆仓库后通过上述脚本恢复服务和模型，再把音频放入 `data-bin/audio/`，答案解析放入 `data-bin/answers/`。
 
 ## A7A NPU Zipformer（可选）
 
@@ -101,6 +125,14 @@ TTS_LANGUAGE=Chinese
 
 未配置 `TTS_VOICE_ID` 时，程序从服务返回的可用音色中选择第一个中文音色。模型路径、线程数、VAD 阈值、超时、上下文长度和队列容量都可以在 YAML 中调整。
 
+以下 Poetry 命令需要在仓库根目录执行，也可以使用统一启动脚本：
+
+```bash
+bash scripts/run_listener.sh translate --audio data-bin/audio/test.mp3 --dry-run
+```
+
+该脚本先进入仓库根目录，优先使用项目 `.venv`，没有时使用 Poetry；系统找不到 FFmpeg/CMake 时，自动加载 `.tools/<工具名>/usr/` 下的本地工具与动态库。`.tools/` 的工具需自行准备，推荐优先安装系统依赖。VS Code 提供作答和翻译两个调试入口，启动时可输入音频路径；调试前需安装系统依赖及 Python 调试器。
+
 ## 使用
 
 先检查环境：
@@ -139,6 +171,14 @@ poetry run cet6-listener translate --audio data-bin/audio/test.mp3 --fast --dry-
 ```
 
 翻译模式保持语音段原始顺序，日志使用 `SOURCE:` 和 `TRANSLATION:` 输出双语文本。默认每段最长 20 秒，遇到 600 ms 静音后开始识别；可通过 `vad.max_speech_seconds` 和 `vad.silence_ms` 调整粒度。`translation.max_tokens`、`max_characters` 和 `queue_size` 控制译文长度与队列容量。
+
+截取指定片段进行真实翻译测试，并同步保存终端输出：
+
+```bash
+bash scripts/test_translation.sh data-bin/audio/test.mp3 60 120
+```
+
+这里从第 60 秒开始测试 120 秒，保持原始输入节奏，不调用 TTS。每次输出到独立的 `outputs/translation/<时间戳>.<随机后缀>/`，包含测试配置、输入信息、截取音频、程序日志与 `terminal.log`。脚本返回码表示运行是否完成，不代表译文准确率；原文件不足指定长度时只测试可截取的部分。
 
 其他命令：
 

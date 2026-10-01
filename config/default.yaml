@@ -1,3 +1,5 @@
+# 相对路径以仓库根目录为基准，推荐通过 scripts/run_listener.sh 启动。
+# 目录职责与恢复方法见 docs/project-structure.md。
 audio:
   ffmpeg_binary: ffmpeg
   sample_rate: 16000

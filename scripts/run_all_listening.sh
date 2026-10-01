@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/environment.sh"
+PROJECT_ROOT="$CET6_PROJECT_ROOT"
 AUDIO_DIR="${PROJECT_ROOT}/data-bin/audio"
 CONFIG_FILE="${PROJECT_ROOT}/config/default.yaml"
 OUTPUT_DIR=""
@@ -97,7 +98,6 @@ done
 
 [[ -d "$AUDIO_DIR" ]] || die "音频目录不存在：$AUDIO_DIR"
 [[ -f "$CONFIG_FILE" ]] || die "配置文件不存在：$CONFIG_FILE"
-command -v poetry >/dev/null 2>&1 || die "找不到 poetry"
 command -v sort >/dev/null 2>&1 || die "找不到 sort"
 command -v flock >/dev/null 2>&1 || die "找不到 flock（通常由 util-linux 提供）"
 
@@ -181,7 +181,7 @@ for index in "${!AUDIO_FILES[@]}"; do
   log "[BATCH] [${number}/${#AUDIO_FILES[@]}] 开始：${filename}"
   started_epoch="$(date +%s)"
   command_args=(
-    poetry run cet6-listener run
+    bash "${PROJECT_ROOT}/scripts/run_listener.sh" run
     --audio "$audio"
     --config "$CONFIG_FILE"
     --asr "$ASR_BACKEND"

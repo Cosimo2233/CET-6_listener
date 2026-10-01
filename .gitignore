@@ -1,5 +1,7 @@
 .env
+poetry.toml
 .venv/
+.tools/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -9,11 +11,21 @@ __pycache__/
 htmlcov/
 build/
 dist/
-data-bin/
-model-bin/
-outputs/
-runtime/
-third-party/
+# 保留目录占位文件；音频、解析、模型、二进制和日志只存放在本地。
+/data-bin/**
+!/data-bin/audio/
+!/data-bin/audio/.gitkeep
+!/data-bin/answers/
+!/data-bin/answers/.gitkeep
+/model-bin/*
+!/model-bin/.gitkeep
+/outputs/*
+!/outputs/.gitkeep
+/runtime/**
+!/runtime/bin/
+!/runtime/bin/.gitkeep
+/third-party/*
+!/third-party/.gitkeep
 tmp-workspace/
 *.log
 .DS_Store
